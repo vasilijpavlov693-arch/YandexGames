@@ -177,7 +177,7 @@
       );
       mesh.add(edges);
 
-      return { mesh, moving, startX: x, startZ: z, time: Math.random() * Math.PI * 2, active: true };
+      return { mesh, moving, startX: x, startZ: z, time: Math.random() * Math.PI * 2, active: true, lastX: x, lastZ: z };
     }
 
     function createBeam(x, y, z) {
@@ -194,7 +194,7 @@
       group.add(pivot);
       group.position.set(x, y, z);
       scene.add(group);
-      return { mesh: group, beam, type: 'beam', speed: 2 + Math.random() * 2, active: true };
+      return { mesh: group, beam, type: 'beam', speed: 2 + Math.random() * 2, active: true, lastX: x, lastZ: z };
     }
 
     function createCrystal(x, y, z) {
@@ -342,39 +342,74 @@
     function checkCollisions() {
       if (!alive) return;
       onGround = false;
+      let standingPlatform = null;
+
       const px = player.position.x, py = player.position.y, pz = player.position.z;
       const pr = 0.35;
+      const playerBottom = py - pr;
+      const playerSpeedY = velocity.y;
 
       platforms.forEach(p => {
         if (!p.active) return;
-        const ox = p.mesh.position.x, oy = p.mesh.position.y, oz = p.mesh.position.z;
-        const hw = 2.5, hd = 1.2, hh = 0.3;
 
-        // On top check
-        if (px + pr > ox - hw && px - pr < ox + hw &&
-            pz + pr > oz - hd && pz - pr < oz + hd &&
-            py - pr < oy + hh && py + pr > oy - hh + 0.5 &&
-            velocity.y <= 1) {
-          onGround = true;
-          velocity.y = 0;
-          player.position.y = oy + hh + pr;
-        }
-      });
+        if (p.type === 'beam' && p.beam) {
+          // Beam collision - use rotated position
+          const beamWorldPos = new THREE.Vector3();
+          p.beam.getWorldPosition(beamWorldPos);
+          const bx = beamWorldPos.x, by = beamWorldPos.y, bz = beamWorldPos.z;
 
-      // Beams
-      platforms.forEach(p => {
-        if (p.type !== 'beam' || !p.beam) return;
-        const bx = p.mesh.position.x, by = p.mesh.position.y, bz = p.mesh.position.z;
-        const dist = Math.sqrt((px-bx)**2 + (py-by)**2 + (pz-bz)**2);
-        if (dist < 1.5) {
-          // Check if on top of beam
-          if (py > by + 0.1 && py - by < 0.8 && velocity.y <= 0) {
+          // Beam dimensions (rotated)
+          const beamLen = 2; // half length of beam
+          const beamH = 0.15;
+
+          // Check if player is above beam and within its bounds
+          if (playerSpeedY <= 0 &&
+              px > bx - beamLen && px < bx + beamLen &&
+              pz > bz - 0.4 && pz < bz + 0.4 &&
+              playerBottom > by - beamH && playerBottom < by + beamH + 0.8) {
             onGround = true;
+            standingPlatform = p;
             velocity.y = 0;
-            player.position.y = by + 0.6;
+            player.position.y = by + beamH + pr;
+          }
+        } else {
+          // Regular platform collision
+          const ox = p.mesh.position.x;
+          const oy = p.mesh.position.y;
+          const oz = p.mesh.position.z;
+
+          // Get actual platform size
+          const hw = p.mesh.geometry.parameters.width / 2;
+          const hd = p.mesh.geometry.parameters.depth / 2;
+          const hh = 0.2;
+
+          // Only land from above (prevent jumping through)
+          if (playerSpeedY <= 0 &&
+              px > ox - hw && px < ox + hw &&
+              pz > oz - hd && pz < oz + hd &&
+              playerBottom > oy - hh && playerBottom < oy + hh + 1.0) {
+            onGround = true;
+            standingPlatform = p;
+            velocity.y = 0;
+            player.position.y = oy + hh + pr;
           }
         }
       });
+
+      // Platform attachment - move with platform
+      if (standingPlatform && standingPlatform.moving) {
+        const ox = standingPlatform.mesh.position.x;
+        const oz = standingPlatform.mesh.position.z;
+        // Calculate platform delta from last frame
+        if (standingPlatform.lastX !== undefined) {
+          const dx = ox - standingPlatform.lastX;
+          const dz = oz - standingPlatform.lastZ;
+          player.position.x += dx;
+          player.position.z += dz;
+        }
+        standingPlatform.lastX = ox;
+        standingPlatform.lastZ = oz;
+      }
     }
 
     function updateCamera(dt) {
