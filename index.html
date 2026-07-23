@@ -7,499 +7,885 @@
   <title>Башня Ада</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #111; overflow: hidden; font-family: Arial, sans-serif; }
+    body { background: #111; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
     canvas { display: block; }
-    #hud { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 20px; text-shadow: 0 0 10px #0ff; z-index: 10; text-align: center; }
-    #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; }
-    #menu h1 { color: #f0f; font-size: 48px; margin-bottom: 30px; text-shadow: 0 0 30px #f0f; }
-    #menu button { padding: 15px 50px; font-size: 20px; background: #f0f; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin: 5px; }
-    #menu button:hover { background: #f5a; }
-    #death { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 20; }
-    #death h2 { color: #f44; font-size: 36px; margin-bottom: 20px; }
-    #death p { color: #fff; font-size: 18px; margin: 5px; }
-    #death button { padding: 12px 40px; font-size: 18px; background: #f0f; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin: 5px; }
-    .hint { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.4); font-size: 12px; z-index: 10; }
+
+    /* HUD */
+    #hud { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 18px; text-shadow: 0 0 10px #0ff; z-index: 10; text-align: center; display: none; }
+    #hud .row { display: flex; gap: 20px; justify-content: center; }
+    #hud .stat { background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 6px; }
+    .hint { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.3); font-size: 11px; z-index: 10; }
+
+    /* Screens */
+    .screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,5,15,0.92); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 10px; overflow-y: auto; }
+    .screen.active { display: flex; }
+    .screen h1 { color: #f0f; font-size: 42px; text-shadow: 0 0 30px #f0f; margin-bottom: 10px; }
+    .screen h2 { color: #0ff; font-size: 28px; margin-bottom: 10px; }
+    .screen p { color: #aaa; font-size: 14px; }
+    .btn { padding: 12px 40px; font-size: 16px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; letter-spacing: 1px; min-width: 200px; transition: transform 0.1s; }
+    .btn:active { transform: scale(0.95); }
+    .btn-primary { background: linear-gradient(135deg, #f0f, #f5a); color: #fff; box-shadow: 0 0 20px rgba(255,0,255,0.4); }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #ccc; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-shop { background: linear-gradient(135deg, #0af, #0ff); color: #fff; }
+    .btn-sm { padding: 8px 20px; font-size: 13px; min-width: 120px; }
+
+    /* Shop */
+    #shop-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; max-width: 600px; width: 90%; max-height: 50vh; overflow-y: auto; padding: 10px; }
+    .shop-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.15s; }
+    .shop-item:hover { border-color: #0ff; background: rgba(255,255,255,0.1); }
+    .shop-item.owned { border-color: #0f6; }
+    .shop-item .icon { font-size: 2rem; margin-bottom: 4px; }
+    .shop-item .name { font-size: 0.8rem; color: #ccc; }
+    .shop-item .price { font-size: 0.85rem; color: #0ff; font-weight: 700; margin-top: 4px; }
+
+    /* Leaderboard */
+    #lb-list { max-width: 400px; width: 90%; }
+    .lb-entry { display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 6px; margin: 3px 0; }
+    .lb-entry .rank { color: #f0f; font-weight: 700; width: 30px; }
+    .lb-entry .name { color: #ccc; flex: 1; }
+    .lb-entry .score { color: #0ff; font-weight: 700; }
+
+    /* Mobile */
+    #mobile-controls { position: fixed; bottom: 0; left: 0; width: 100%; height: 40%; z-index: 60; pointer-events: none; display: none; }
+    #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 120px; height: 120px; pointer-events: auto; }
+    #joystick-base { width: 100%; height: 100%; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; position: relative; }
+    #joystick-stick { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.3); position: absolute; }
+    #btn-jump { position: absolute; bottom: 50px; right: 30px; width: 70px; height: 70px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,0,64,0.3); color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; pointer-events: auto; }
   </style>
 </head>
 <body>
-  <div id="hud" style="display:none">Этаж: <span id="floor">1</span></div>
-  <div id="menu"><h1>БАШНЯ АДА</h1><button onclick="startGame()">ИГРАТЬ</button></div>
-  <div id="death"><h2>ТЫ ПОГИБ!</h2><p>Этаж: <span id="dFloor">1</span></p><button onclick="restartGame()">РЕСТАРТ</button><button onclick="goMenu()">МЕНЮ</button></div>
+  <!-- HUD -->
+  <div id="hud">
+    <div class="row">
+      <div class="stat">Этаж: <span id="floor">1</span></div>
+      <div class="stat">💎 <span id="crystals">0</span></div>
+      <div class="stat">Рекорд: <span id="best">0</span></div>
+    </div>
+  </div>
+
+  <!-- Menu -->
+  <div id="screen-menu" class="screen active">
+    <h1>БАШНЯ АДА</h1>
+    <button class="btn btn-primary" onclick="startGame()">ИГРАТЬ</button>
+    <button class="btn btn-shop" onclick="showScreen('shop')">МАГАЗИН</button>
+    <button class="btn btn-secondary" onclick="showScreen('leaderboard')">ЛИДЕРБОРД</button>
+  </div>
+
+  <!-- Death -->
+  <div id="screen-death" class="screen">
+    <h2 style="color:#f44">ТЫ ПОГИБ!</h2>
+    <p>Этаж: <span id="dFloor">1</span> | Кристаллы: +<span id="dCrystals">0</span></p>
+    <button class="btn btn-primary" onclick="restartGame()">РЕСТАРТ</button>
+    <button class="btn btn-secondary" onclick="showScreen('menu')">МЕНЮ</button>
+  </div>
+
+  <!-- Shop -->
+  <div id="screen-shop" class="screen">
+    <h2>МАГАЗИН</h2>
+    <p>💎 <span id="shopCrystals">0</span></p>
+    <div id="shop-items"></div>
+    <button class="btn btn-secondary btn-sm" onclick="showScreen('menu')">НАЗАД</button>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="screen-leaderboard" class="screen">
+    <h2>ЛИДЕРБОРД</h2>
+    <div id="lb-list"></div>
+    <button class="btn btn-secondary btn-sm" onclick="showScreen('menu')">НАЗАД</button>
+  </div>
+
+  <!-- Mobile Controls -->
+  <div id="mobile-controls">
+    <div id="joystick-zone">
+      <div id="joystick-base"><div id="joystick-stick"></div></div>
+    </div>
+    <button id="btn-jump">ПРЫЖОК</button>
+  </div>
+
   <div class="hint">WASD — движение | Пробел — прыжок | ЛКМ — камера</div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // === GAME STATE ===
-    let scene, camera, renderer, clock;
-    let player, platforms = [], crystals = [], decorations = [];
-    let velocity = new THREE.Vector3();
-    let onGround = false, alive = true;
-    let currentFloor = 1, crystalsEarned = 0;
-    let cameraAngleX = 0, cameraAngleY = 0.3;
-    let gameState = 'menu'; // menu, playing, dead
-    const keys = {};
+  // ============================================================
+  // GAME STATE
+  // ============================================================
+  let scene, camera, renderer, clock;
+  let player, platforms = [], crystals = [], decorations = [];
+  let velocity = new THREE.Vector3();
+  let onGround = false, alive = true;
+  let currentFloor = 1, crystalsEarned = 0, totalCrystals = 0;
+  let cameraAngleX = 0, cameraAngleY = 0.3;
+  let gameState = 'menu';
+  let activeSkin = 'default';
+  const keys = {};
+  let joystickInput = { x: 0, y: 0, active: false };
+  let mobileJump = false;
 
-    // === CONFIG ===
-    const GRAVITY = 28;
-    const JUMP_FORCE = 13;
-    const MOVE_SPEED = 8;
-    const FLOOR_HEIGHT = 8;
-    const CAM_DIST = 12;
-    const CAM_HEIGHT = 5;
-    const CAM_SPEED = 20;
-    const MOUSE_SENSITIVITY = 0.002;
+  // ============================================================
+  // CONFIG
+  // ============================================================
+  const GRAVITY = 28;
+  const JUMP_FORCE = 13;
+  const MOVE_SPEED = 8;
+  const FLOOR_HEIGHT = 8;
+  const CAM_DIST = 12;
+  const CAM_HEIGHT = 5;
+  const MOUSE_SENSITIVITY = 0.002;
+  const STEP_HEIGHT = 2.5;
+  const MAX_JUMP_HEIGHT = (JUMP_FORCE * JUMP_FORCE) / (2 * GRAVITY);
+  const MAX_JUMP_TIME = (2 * JUMP_FORCE) / GRAVITY;
+  const MAX_HORIZONTAL = MOVE_SPEED * MAX_JUMP_TIME;
 
-    // === INIT ===
-    function init() {
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0a0a1a);
-      scene.fog = new THREE.FogExp2(0x0a0a1a, 0.006);
+  // ============================================================
+  // SHOP DATA
+  // ============================================================
+  const SKINS = [
+    { id: 'default', name: 'Классик', price: 0, color: 0xff0040, icon: '🔴' },
+    { id: 'neon', name: 'Неон', price: 50, color: 0x00ffcc, icon: '🟢' },
+    { id: 'gold', name: 'Золотой', price: 100, color: 0xffd700, icon: '🟡' },
+    { id: 'purple', name: 'Фиолет', price: 150, color: 0xaa00ff, icon: '🟣' },
+    { id: 'ice', name: 'Ледяной', price: 200, color: 0x00ccff, icon: '🧊' },
+    { id: 'fire', name: 'Огненный', price: 300, color: 0xff4400, icon: '🔥' },
+  ];
+  const BOOSTS = [
+    { id: 'double_jump', name: 'Двойной прыжок', price: 250, icon: '⬆️' },
+    { id: 'high_jump', name: 'Высокий прыжок', price: 200, icon: '🦘' },
+    { id: 'speed', name: 'Скорость x1.5', price: 180, icon: '⚡' },
+  ];
 
-      camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 200);
-      camera.position.set(0, 5, CAM_DIST);
+  // ============================================================
+  // STORAGE
+  // ============================================================
+  let saveData = { crystals: 0, bestFloor: 0, ownedSkins: ['default'], ownedBoosts: [], activeSkin: 'default', leaderboard: [] };
 
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+  function loadSave() {
+    try {
+      const s = localStorage.getItem('tower_of_hell_v2');
+      if (s) Object.assign(saveData, JSON.parse(s));
+    } catch(e) {}
+    totalCrystals = saveData.crystals;
+    activeSkin = saveData.activeSkin;
+  }
+
+  function saveSave() {
+    saveData.crystals = totalCrystals;
+    saveData.activeSkin = activeSkin;
+    localStorage.setItem('tower_of_hell_v2', JSON.stringify(saveData));
+  }
+
+  function addToLeaderboard(floor) {
+    const name = 'Игрок';
+    saveData.leaderboard.push({ name, floor, date: Date.now() });
+    saveData.leaderboard.sort((a, b) => b.floor - a.floor);
+    saveData.leaderboard = saveData.leaderboard.slice(0, 20);
+    if (floor > saveData.bestFloor) saveData.bestFloor = floor;
+    saveSave();
+  }
+
+  // ============================================================
+  // TEXTURE GENERATOR
+  // ============================================================
+  function createProceduralTexture(baseColor, pattern) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    const r = (baseColor >> 16) & 255;
+    const g = (baseColor >> 8) & 255;
+    const b = baseColor & 255;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, 0, 128, 128);
+
+    if (pattern === 'grid') {
+      ctx.strokeStyle = `rgba(255,255,255,0.15)`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 128; i += 16) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 128); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(128, i); ctx.stroke();
+      }
+    } else if (pattern === 'noise') {
+      for (let i = 0; i < 2000; i++) {
+        const x = Math.random() * 128;
+        const y = Math.random() * 128;
+        const brightness = Math.random() * 40 - 20;
+        ctx.fillStyle = `rgba(${brightness > 0 ? 255 : 0},${brightness > 0 ? 255 : 0},${brightness > 0 ? 255 : 0},${Math.abs(brightness) / 100})`;
+        ctx.fillRect(x, y, 2, 2);
+      }
+    } else if (pattern === 'stripes') {
+      ctx.fillStyle = `rgba(0,0,0,0.15)`;
+      for (let i = 0; i < 128; i += 8) {
+        ctx.fillRect(i, 0, 4, 128);
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  function init() {
+    loadSave();
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a1a);
+    scene.fog = new THREE.FogExp2(0x0a0a1a, 0.006);
+
+    camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 200);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    clock = new THREE.Clock();
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0x555577, 0.9));
+    const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+    dir.position.set(10, 20, 10);
+    scene.add(dir);
+    const pl1 = new THREE.PointLight(0x00e5ff, 1.5, 50);
+    pl1.position.set(0, 25, 0);
+    scene.add(pl1);
+    const pl2 = new THREE.PointLight(0xff0040, 0.8, 30);
+    pl2.position.set(-10, 15, 10);
+    scene.add(pl2);
+
+    // Player
+    createPlayer();
+
+    // Events
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
       renderer.setSize(innerWidth, innerHeight);
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-      document.body.appendChild(renderer.domElement);
+    });
 
-      clock = new THREE.Clock();
+    window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+    window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-      // Lights
-      scene.add(new THREE.AmbientLight(0x444466, 0.8));
-      const dir = new THREE.DirectionalLight(0xffffff, 1.0);
-      dir.position.set(10, 20, 10);
-      scene.add(dir);
-      const pl = new THREE.PointLight(0x00e5ff, 1.5, 40);
-      pl.position.set(0, 20, 0);
-      scene.add(pl);
+    renderer.domElement.addEventListener('click', () => {
+      if (gameState === 'playing') renderer.domElement.requestPointerLock();
+    });
+    document.addEventListener('mousemove', e => {
+      if (document.pointerLockElement === renderer.domElement && gameState === 'playing') {
+        cameraAngleX -= e.movementX * MOUSE_SENSITIVITY;
+        cameraAngleY = Math.max(-0.5, Math.min(0.8, cameraAngleY - e.movementY * MOUSE_SENSITIVITY));
+      }
+    });
 
-      // Player
-      player = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8),
-        new THREE.MeshPhongMaterial({ color: 0xff0040, emissive: 0xff2060, emissiveIntensity: 0.5 })
-      );
-      const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.25, 8, 8),
-        new THREE.MeshPhongMaterial({ color: 0xff0040, emissive: 0xff2060, emissiveIntensity: 0.5 })
-      );
-      head.position.y = 0.55;
-      player.add(head);
-      player.position.set(0, 2, 0);
-      scene.add(player);
+    // Mobile
+    setupMobile();
 
-      // Lights around player
-      const pLight = new THREE.PointLight(0xff0040, 1.0, 10);
-      player.add(pLight);
+    updateHUD();
+    animate();
+  }
 
-      window.addEventListener('resize', () => {
-        camera.aspect = innerWidth / innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(innerWidth, innerHeight);
-      });
+  function createPlayer() {
+    if (player) scene.remove(player);
+    const skin = SKINS.find(s => s.id === activeSkin) || SKINS[0];
+    const color = skin.color;
 
-      window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
-      window.addEventListener('keyup', e => { keys[e.code] = false; });
+    player = new THREE.Group();
 
-      // Pointer lock for mouse camera
-      renderer.domElement.addEventListener('click', () => {
-        if (gameState === 'playing') {
-          renderer.domElement.requestPointerLock();
-        }
-      });
-      document.addEventListener('pointerlockchange', () => {});
-      document.addEventListener('mousemove', e => {
-        if (document.pointerLockElement === renderer.domElement && gameState === 'playing') {
-          cameraAngleX -= e.movementX * MOUSE_SENSITIVITY;
-          cameraAngleY = Math.max(-0.5, Math.min(0.8, cameraAngleY - e.movementY * MOUSE_SENSITIVITY));
-        }
-      });
+    // Body
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8),
+      new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.4, map: createProceduralTexture(color, 'grid') })
+    );
+    body.position.y = 0.4;
+    player.add(body);
 
-      animate();
+    // Head
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.25, 8, 8),
+      new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.4, map: createProceduralTexture(color, 'noise') })
+    );
+    head.position.y = 1.05;
+    player.add(head);
+
+    // Eyes
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    [-0.1, 0.1].forEach(x => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), eyeMat);
+      eye.position.set(x, 1.1, 0.2);
+      player.add(eye);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), pupilMat);
+      pupil.position.set(x, 1.1, 0.24);
+      player.add(pupil);
+    });
+
+    // Glow
+    const glow = new THREE.PointLight(color, 0.8, 8);
+    glow.position.y = 0.5;
+    player.add(glow);
+
+    player.position.set(0, 2, 0);
+    scene.add(player);
+  }
+
+  // ============================================================
+  // PLATFORM TYPES
+  // ============================================================
+  function createPlatform(x, y, z, size, color, type = 'normal') {
+    const geo = new THREE.BoxGeometry(size, 0.4, 2);
+    let mat;
+
+    switch (type) {
+      case 'ice':
+        mat = new THREE.MeshPhongMaterial({
+          color: 0x88ccff, emissive: 0x4488ff, emissiveIntensity: 0.3,
+          map: createProceduralTexture(0x88ccff, 'stripes'), transparent: true, opacity: 0.8
+        });
+        break;
+      case 'trampoline':
+        mat = new THREE.MeshPhongMaterial({
+          color: 0x44ff44, emissive: 0x22cc22, emissiveIntensity: 0.5,
+          map: createProceduralTexture(0x44ff44, 'grid')
+        });
+        break;
+      case 'crumbling':
+        mat = new THREE.MeshPhongMaterial({
+          color: 0xaa6633, emissive: 0x884422, emissiveIntensity: 0.2,
+          map: createProceduralTexture(0xaa6633, 'noise')
+        });
+        break;
+      case 'moving':
+        mat = new THREE.MeshPhongMaterial({
+          color: 0x9944ff, emissive: 0x7722cc, emissiveIntensity: 0.4,
+          map: createProceduralTexture(0x9944ff, 'grid')
+        });
+        break;
+      default:
+        mat = new THREE.MeshPhongMaterial({
+          color: 0x3355bb, emissive: 0x2244aa, emissiveIntensity: 0.3,
+          map: createProceduralTexture(0x3355bb, 'grid')
+        });
     }
 
-    // === GENERATE TOWER ===
-    // Max jump physics
-    const MAX_JUMP_HEIGHT = (JUMP_FORCE * JUMP_FORCE) / (2 * GRAVITY); // ≈ 3.0
-    const MAX_JUMP_TIME = (2 * JUMP_FORCE) / GRAVITY; // ≈ 0.93s
-    const MAX_HORIZONTAL = MOVE_SPEED * MAX_JUMP_TIME; // ≈ 7.4
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    scene.add(mesh);
 
-    function isReachable(fromX, fromY, fromZ, toX, toY, toZ) {
-      const dx = Math.abs(toX - fromX);
-      const dz = Math.abs(toZ - fromZ);
-      const dy = toY - fromY;
-      const hDist = Math.sqrt(dx * dx + dz * dz);
-      // Strict: max 60% of jump height, max 50% of horizontal reach
-      return dy <= MAX_JUMP_HEIGHT * 0.6 && hDist <= MAX_HORIZONTAL * 0.5;
-    }
+    // Edge glow
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.5 })
+    );
+    mesh.add(edges);
 
-    const STEP_HEIGHT = 2.5; // Fixed height between platforms
+    return {
+      mesh, type, active: true,
+      moving: type === 'moving',
+      startX: x, startZ: z, time: Math.random() * Math.PI * 2,
+      lastX: x, lastZ: z,
+      crumbling: type === 'crumbling',
+      crumbleTimer: 0,
+      crumblingActive: false,
+      trampoline: type === 'trampoline',
+    };
+  }
 
-    function generateFloor(y, index) {
-      const difficulty = Math.min(index / 8, 1);
-      const group = [];
+  function createBeam(x, y, z) {
+    const group = new THREE.Group();
+    const beam = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 0.3, 0.5),
+      new THREE.MeshPhongMaterial({ color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 0.6, map: createProceduralTexture(0x00e5ff, 'stripes') })
+    );
+    beam.castShadow = true;
+    group.add(beam);
+    const pivot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 8, 8),
+      new THREE.MeshPhongMaterial({ color: 0xff0040, emissive: 0xff0040, emissiveIntensity: 0.8 })
+    );
+    group.add(pivot);
+    group.position.set(x, y, z);
+    scene.add(group);
+    return { mesh: group, beam, type: 'beam', speed: 1.5 + Math.random() * 2, active: true, lastX: x, lastZ: z };
+  }
 
-      // Base platform
-      const baseX = index === 0 ? 0 : (Math.random() - 0.5) * 4;
-      const baseZ = index === 0 ? 0 : (Math.random() - 0.5) * 2;
-      const plat = createPlatform(baseX, y, baseZ, 5, 0x2244aa);
-      group.push(plat);
+  function createCrystal(x, y, z) {
+    const mesh = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.3),
+      new THREE.MeshPhongMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.8, map: createProceduralTexture(0x00ffff, 'noise') })
+    );
+    mesh.position.set(x, y, z);
+    scene.add(mesh);
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.5, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.12 })
+    );
+    mesh.add(glow);
+    return { mesh, type: 'crystal', collected: false };
+  }
 
-      // Generate platforms with fixed height, random horizontal distance
-      let lastX = baseX, lastY = y, lastZ = baseZ;
-      const count = 2 + Math.floor(difficulty * 2);
+  // ============================================================
+  // TOWER GENERATION
+  // ============================================================
+  function isReachable(fx, fy, fz, tx, ty, tz) {
+    const dx = tx - fx, dz = tz - fz, dy = ty - fy;
+    const hDist = Math.sqrt(dx * dx + dz * dz);
+    return dy <= MAX_JUMP_HEIGHT * 0.65 && hDist <= MAX_HORIZONTAL * 0.55;
+  }
 
-      for (let i = 0; i < count; i++) {
-        let attempts = 0;
-        let ox, oy, oz;
+  function generateFloor(y, index) {
+    const difficulty = Math.min(index / 8, 1);
+    const group = [];
 
-        do {
-          // Fixed height step
-          oy = lastY + STEP_HEIGHT;
-          // Random horizontal distance (1.5 to 4 units)
-          const r = 1.5 + Math.random() * 2.5;
-          const angle = Math.random() * Math.PI * 2;
-          ox = lastX + Math.cos(angle) * r;
-          oz = lastZ + Math.sin(angle) * r * 0.5;
-          attempts++;
-        } while (!isReachable(lastX, lastY, lastZ, ox, oy, oz) && attempts < 30);
+    // Base platform
+    const baseX = index === 0 ? 0 : (Math.random() - 0.5) * 3;
+    const baseZ = index === 0 ? 0 : (Math.random() - 0.5) * 2;
+    group.push(createPlatform(baseX, y, baseZ, 5, 0x2244aa));
 
-        // Fallback: place directly above
-        if (!isReachable(lastX, lastY, lastZ, ox, oy, oz)) {
-          ox = lastX + (Math.random() - 0.5) * 2;
-          oz = lastZ + (Math.random() - 0.5) * 1;
-          oy = lastY + STEP_HEIGHT;
-        }
+    let lastX = baseX, lastY = y, lastZ = baseZ;
+    const count = 2 + Math.floor(difficulty * 2);
 
-        if (difficulty > 0.3 && Math.random() < 0.3) {
-          group.push(createBeam(ox, oy, oz));
-        } else if (difficulty > 0.2 && Math.random() < 0.3) {
-          group.push(createPlatform(ox, oy, oz, 2, 0x9944ff, true));
-        } else {
-          // More size variation: 1.5 to 5
-          group.push(createPlatform(ox, oy, oz, 1.5 + Math.random() * 3.5, 0x3355bb));
-        }
+    for (let i = 0; i < count; i++) {
+      let attempts = 0, ox, oy, oz;
 
-        lastX = ox; lastY = oy; lastZ = oz;
+      do {
+        oy = lastY + STEP_HEIGHT;
+        const r = 1.5 + Math.random() * 2.5;
+        const angle = Math.random() * Math.PI * 2;
+        ox = lastX + Math.cos(angle) * r;
+        oz = lastZ + Math.sin(angle) * r * 0.5;
+        attempts++;
+      } while (!isReachable(lastX, lastY, lastZ, ox, oy, oz) && attempts < 30);
+
+      if (!isReachable(lastX, lastY, lastZ, ox, oy, oz)) {
+        ox = lastX + (Math.random() - 0.5) * 2;
+        oz = lastZ + (Math.random() - 0.5) * 1;
+        oy = lastY + STEP_HEIGHT;
       }
 
-      // Crystal
-      if (index > 0 && Math.random() > 0.5) {
-        const cx = (Math.random() - 0.5) * 6;
-        const cy = y + FLOOR_HEIGHT * 0.5;
-        const cz = (Math.random() - 0.5) * 4;
-        const crystal = createCrystal(cx, cy, cz);
-        group.push(crystal);
+      // Pick platform type
+      const roll = Math.random();
+      if (difficulty > 0.3 && roll < 0.15) {
+        group.push(createBeam(ox, oy, oz));
+      } else if (difficulty > 0.2 && roll < 0.3) {
+        group.push(createPlatform(ox, oy, oz, 2, 0x9944ff, 'moving'));
+      } else if (difficulty > 0.1 && roll < 0.4) {
+        group.push(createPlatform(ox, oy, oz, 2.5, 0x88ccff, 'ice'));
+      } else if (difficulty > 0.15 && roll < 0.5) {
+        group.push(createPlatform(ox, oy, oz, 3, 0x44ff44, 'trampoline'));
+      } else if (difficulty > 0.2 && roll < 0.55) {
+        group.push(createPlatform(ox, oy, oz, 2, 0xaa6633, 'crumbling'));
+      } else {
+        group.push(createPlatform(ox, oy, oz, 1.5 + Math.random() * 3.5, 0x3355bb));
       }
 
-      return group;
+      lastX = ox; lastY = oy; lastZ = oz;
     }
 
-    function createPlatform(x, y, z, size, color, moving) {
-      const geo = new THREE.BoxGeometry(size, 0.4, 2);
-      const mat = new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.3 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(x, y, z);
-      mesh.receiveShadow = true;
-      scene.add(mesh);
-
-      // Edge glow
-      const edges = new THREE.LineSegments(
-        new THREE.EdgesGeometry(geo),
-        new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6 })
-      );
-      mesh.add(edges);
-
-      return { mesh, moving, startX: x, startZ: z, time: Math.random() * Math.PI * 2, active: true, lastX: x, lastZ: z };
+    // Crystal
+    if (index > 0 && Math.random() > 0.4) {
+      group.push(createCrystal(
+        lastX + (Math.random() - 0.5) * 3,
+        lastY + 1.5,
+        lastZ + (Math.random() - 0.5) * 2
+      ));
     }
 
-    function createBeam(x, y, z) {
-      const group = new THREE.Group();
-      const geo = new THREE.BoxGeometry(4, 0.3, 0.5);
-      const mat = new THREE.MeshPhongMaterial({ color: 0x00e5ff, emissive: 0x00e5ff, emissiveIntensity: 0.6 });
-      const beam = new THREE.Mesh(geo, mat);
-      beam.castShadow = true;
-      group.add(beam);
-      const pivot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 8, 8),
-        new THREE.MeshPhongMaterial({ color: 0xff0040, emissive: 0xff0040, emissiveIntensity: 0.8 })
-      );
-      group.add(pivot);
-      group.position.set(x, y, z);
-      scene.add(group);
-      return { mesh: group, beam, type: 'beam', speed: 2 + Math.random() * 2, active: true, lastX: x, lastZ: z };
+    return group;
+  }
+
+  function buildTower() {
+    platforms.forEach(p => scene.remove(p.mesh));
+    crystals.forEach(c => scene.remove(c.mesh));
+    decorations.forEach(d => scene.remove(d));
+    platforms = []; crystals = []; decorations = [];
+
+    // Ground
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.MeshPhongMaterial({ color: 0x111122, map: createProceduralTexture(0x111122, 'grid') })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    decorations.push(ground);
+
+    const grid = new THREE.GridHelper(40, 20, 0x00e5ff, 0x002233);
+    grid.position.y = -0.49;
+    scene.add(grid);
+    decorations.push(grid);
+
+    for (let i = 0; i < 10; i++) {
+      const items = generateFloor(i * FLOOR_HEIGHT, i);
+      items.forEach(item => {
+        if (item.type === 'crystal') crystals.push(item);
+        else platforms.push(item);
+      });
+    }
+  }
+
+  // ============================================================
+  // GAME CONTROL
+  // ============================================================
+  function startGame() {
+    gameState = 'playing';
+    currentFloor = 1;
+    crystalsEarned = 0;
+    alive = true;
+    onGround = false;
+    velocity.set(0, 0, 0);
+    cameraAngleX = 0;
+    cameraAngleY = 0.3;
+    createPlayer();
+    buildTower();
+    showScreen('game');
+    updateHUD();
+  }
+
+  function restartGame() { startGame(); }
+
+  function die() {
+    if (!alive) return;
+    alive = false;
+    player.visible = false;
+    document.exitPointerLock();
+    totalCrystals += crystalsEarned;
+    addToLeaderboard(currentFloor);
+    document.getElementById('dFloor').textContent = currentFloor;
+    document.getElementById('dCrystals').textContent = crystalsEarned;
+    setTimeout(() => showScreen('death'), 300);
+  }
+
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if (name === 'game') {
+      document.getElementById('hud').style.display = 'block';
+      if (isMobile()) document.getElementById('mobile-controls').style.display = 'block';
+    } else {
+      document.getElementById('hud').style.display = 'none';
+      document.getElementById('mobile-controls').style.display = 'none';
+      document.exitPointerLock();
+    }
+    if (name === 'shop') renderShop();
+    if (name === 'leaderboard') renderLeaderboard();
+    if (name !== 'game') document.getElementById('screen-' + name).classList.add('active');
+    gameState = name === 'game' ? 'playing' : 'menu';
+  }
+
+  function updateHUD() {
+    document.getElementById('floor').textContent = currentFloor;
+    document.getElementById('crystals').textContent = totalCrystals;
+    document.getElementById('best').textContent = saveData.bestFloor;
+  }
+
+  // ============================================================
+  // SHOP
+  // ============================================================
+  function renderShop() {
+    document.getElementById('shopCrystals').textContent = totalCrystals;
+    const container = document.getElementById('shop-items');
+    container.innerHTML = '';
+
+    SKINS.forEach(skin => {
+      const owned = saveData.ownedSkins.includes(skin.id);
+      const active = activeSkin === skin.id;
+      const div = document.createElement('div');
+      div.className = 'shop-item' + (owned ? ' owned' : '');
+      div.innerHTML = `<div class="icon">${skin.icon}</div><div class="name">${skin.name}</div><div class="price">${active ? '✅ Активен' : owned ? 'Куплено' : '💎 ' + skin.price}</div>`;
+      div.onclick = () => {
+        if (owned) {
+          activeSkin = skin.id;
+          saveSave();
+          renderShop();
+        } else if (totalCrystals >= skin.price) {
+          totalCrystals -= skin.price;
+          saveData.ownedSkins.push(skin.id);
+          activeSkin = skin.id;
+          saveSave();
+          renderShop();
+        }
+      };
+      container.appendChild(div);
+    });
+
+    BOOSTS.forEach(boost => {
+      const owned = saveData.ownedBoosts.includes(boost.id);
+      const div = document.createElement('div');
+      div.className = 'shop-item' + (owned ? ' owned' : '');
+      div.innerHTML = `<div class="icon">${boost.icon}</div><div class="name">${boost.name}</div><div class="price">${owned ? '✅ Куплено' : '💎 ' + boost.price}</div>`;
+      div.onclick = () => {
+        if (!owned && totalCrystals >= boost.price) {
+          totalCrystals -= boost.price;
+          saveData.ownedBoosts.push(boost.id);
+          saveSave();
+          renderShop();
+        }
+      };
+      container.appendChild(div);
+    });
+  }
+
+  // ============================================================
+  // LEADERBOARD
+  // ============================================================
+  function renderLeaderboard() {
+    const list = document.getElementById('lb-list');
+    list.innerHTML = '';
+    if (saveData.leaderboard.length === 0) {
+      list.innerHTML = '<p>Пока нет записей</p>';
+      return;
+    }
+    saveData.leaderboard.slice(0, 10).forEach((entry, i) => {
+      const div = document.createElement('div');
+      div.className = 'lb-entry';
+      div.innerHTML = `<span class="rank">#${i + 1}</span><span class="name">${entry.name}</span><span class="score">Этаж ${entry.floor}</span>`;
+      list.appendChild(div);
+    });
+  }
+
+  // ============================================================
+  // MOBILE
+  // ============================================================
+  function isMobile() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
+
+  function setupMobile() {
+    if (!isMobile()) return;
+    const base = document.getElementById('joystick-base');
+    const stick = document.getElementById('joystick-stick');
+    let active = false;
+
+    const handle = (cx, cy) => {
+      const rect = base.getBoundingClientRect();
+      const dx = cx - rect.left - rect.width / 2;
+      const dy = cy - rect.top - rect.height / 2;
+      const max = rect.width / 2 - 20;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const clamped = Math.min(dist, max);
+      const nx = dist > 0 ? dx / dist : 0;
+      const ny = dist > 0 ? dy / dist : 0;
+      stick.style.transform = `translate(${nx * clamped}px, ${ny * clamped}px)`;
+      joystickInput.x = nx * (clamped / max);
+      joystickInput.y = ny * (clamped / max);
+      joystickInput.active = true;
+    };
+
+    base.addEventListener('touchstart', e => { e.preventDefault(); active = true; handle(e.touches[0].clientX, e.touches[0].clientY); });
+    window.addEventListener('touchmove', e => { if (active) handle(e.touches[0].clientX, e.touches[0].clientY); });
+    window.addEventListener('touchend', () => { active = false; stick.style.transform = ''; joystickInput.x = 0; joystickInput.y = 0; joystickInput.active = false; });
+
+    const jumpBtn = document.getElementById('btn-jump');
+    jumpBtn.addEventListener('touchstart', e => { e.preventDefault(); mobileJump = true; });
+    jumpBtn.addEventListener('touchend', () => { mobileJump = false; });
+  }
+
+  // ============================================================
+  // UPDATE
+  // ============================================================
+  function updatePlayer(dt) {
+    if (!alive) return;
+
+    let mx = 0, mz = 0;
+    if (keys['KeyA'] || keys['ArrowLeft']) mx = -1;
+    if (keys['KeyD'] || keys['ArrowRight']) mx = 1;
+    if (keys['KeyW'] || keys['ArrowUp']) mz = -1;
+    if (keys['KeyS'] || keys['ArrowDown']) mz = 1;
+    if (joystickInput.active) { mx = joystickInput.x; mz = joystickInput.y; }
+
+    const speed = saveData.ownedBoosts.includes('speed') ? MOVE_SPEED * 1.5 : MOVE_SPEED;
+    const cos = Math.cos(cameraAngleX), sin = Math.sin(cameraAngleX);
+    velocity.x = (mx * cos + mz * sin) * speed;
+    velocity.z = (-mx * sin + mz * cos) * speed;
+
+    velocity.y -= GRAVITY * dt;
+
+    const jumpForce = saveData.ownedBoosts.includes('high_jump') ? JUMP_FORCE * 1.3 : JUMP_FORCE;
+    const jumpPressed = keys['Space'] || mobileJump;
+    if (jumpPressed && onGround) {
+      velocity.y = jumpForce;
+      onGround = false;
+    } else if (jumpPressed && !onGround && saveData.ownedBoosts.includes('double_jump') && player._canDoubleJump) {
+      velocity.y = jumpForce * 0.85;
+      player._canDoubleJump = false;
     }
 
-    function createCrystal(x, y, z) {
-      const geo = new THREE.OctahedronGeometry(0.3);
-      const mat = new THREE.MeshPhongMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(x, y, z);
-      scene.add(mesh);
-      const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 8, 8),
-        new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.15 })
-      );
-      mesh.add(glow);
-      return { mesh, type: 'crystal', collected: false };
-    }
+    if (onGround) player._canDoubleJump = true;
 
-    function buildTower() {
-      // Clear old
-      platforms.forEach(p => scene.remove(p.mesh));
-      crystals.forEach(c => scene.remove(c.mesh));
-      decorations.forEach(d => scene.remove(d.mesh));
-      platforms = []; crystals = []; decorations = [];
+    player.position.x += velocity.x * dt;
+    player.position.y += velocity.y * dt;
+    player.position.z += velocity.z * dt;
 
-      // Ground
-      const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(30, 30),
-        new THREE.MeshBasicMaterial({ color: 0x111122, side: THREE.DoubleSide })
-      );
-      ground.rotation.x = -Math.PI / 2;
-      ground.position.y = -0.5;
-      scene.add(ground);
-      decorations.push(ground);
+    if (player.position.y < -15) die();
 
-      const grid = new THREE.GridHelper(30, 15, 0x00e5ff, 0x003344);
-      grid.position.y = -0.49;
-      scene.add(grid);
-      decorations.push(grid);
-
-      // Generate 8 floors
-      for (let i = 0; i < 8; i++) {
-        const items = generateFloor(i * FLOOR_HEIGHT, i);
-        items.forEach(item => {
-          if (item.type === 'crystal') crystals.push(item);
-          else platforms.push(item);
+    // Floor tracking
+    const newFloor = Math.floor(player.position.y / FLOOR_HEIGHT) + 1;
+    if (newFloor > currentFloor) {
+      currentFloor = newFloor;
+      updateHUD();
+      // Generate more
+      const topY = platforms.length > 0 ? Math.max(...platforms.map(p => p.mesh.position.y)) : 0;
+      if (player.position.y > topY - FLOOR_HEIGHT * 3) {
+        const idx = Math.floor(topY / FLOOR_HEIGHT) + 1;
+        generateFloor(idx * FLOOR_HEIGHT, idx).forEach(item => {
+          if (item.type === 'crystal') crystals.push(item); else platforms.push(item);
         });
       }
     }
 
-    // === GAME LOGIC ===
-    function startGame() {
-      document.getElementById('menu').style.display = 'none';
-      document.getElementById('death').style.display = 'none';
-      document.getElementById('hud').style.display = 'block';
-      gameState = 'playing';
-      currentFloor = 1;
-      crystalsEarned = 0;
-      alive = true;
-      onGround = false;
-      velocity.set(0, 0, 0);
-      player.position.set(0, 2, 0);
-      player.visible = true;
-      player.alive = true;
-      cameraAngleX = 0;
-      cameraAngleY = 0.3;
-      buildTower();
-    }
-
-    function restartGame() { startGame(); }
-    function goMenu() {
-      gameState = 'menu';
-      document.exitPointerLock();
-      document.getElementById('menu').style.display = 'flex';
-      document.getElementById('death').style.display = 'none';
-      document.getElementById('hud').style.display = 'none';
-    }
-
-    function die() {
-      if (!alive) return;
-      alive = false;
-      player.visible = false;
-      document.exitPointerLock();
-      document.getElementById('dFloor').textContent = currentFloor;
-      setTimeout(() => {
-        document.getElementById('death').style.display = 'flex';
-      }, 500);
-    }
-
-    // === UPDATE ===
-    function updatePlayer(dt) {
-      if (!alive) return;
-
-      let mx = 0, mz = 0;
-      if (keys['KeyA'] || keys['ArrowLeft']) mx = -1;
-      if (keys['KeyD'] || keys['ArrowRight']) mx = 1;
-      if (keys['KeyW'] || keys['ArrowUp']) mz = -1;
-      if (keys['KeyS'] || keys['ArrowDown']) mz = 1;
-
-      // Rotate by camera
-      const cos = Math.cos(cameraAngleX), sin = Math.sin(cameraAngleX);
-      velocity.x = (mx * cos + mz * sin) * MOVE_SPEED;
-      velocity.z = (-mx * sin + mz * cos) * MOVE_SPEED;
-
-      velocity.y -= GRAVITY * dt;
-
-      // Jump
-      if (keys['Space'] && onGround) {
-        velocity.y = JUMP_FORCE;
-        onGround = false;
+    // Collect crystals
+    crystals.forEach(c => {
+      if (!c.collected && player.position.distanceTo(c.mesh.position) < 1.2) {
+        c.collected = true;
+        c.mesh.visible = false;
+        totalCrystals++;
+        crystalsEarned++;
+        updateHUD();
       }
+    });
+  }
 
-      player.position.x += velocity.x * dt;
-      player.position.y += velocity.y * dt;
-      player.position.z += velocity.z * dt;
+  function checkCollisions() {
+    if (!alive) return;
+    onGround = false;
+    let standingPlatform = null;
 
-      // Fall death
-      if (player.position.y < -10) die();
+    const px = player.position.x, py = player.position.y, pz = player.position.z;
+    const pr = 0.35;
+    const playerBottom = py - pr;
+    const playerTop = py + pr;
+    const playerSpeedY = velocity.y;
 
-      // Update floor
-      const newFloor = Math.floor(player.position.y / FLOOR_HEIGHT) + 1;
-      if (newFloor > currentFloor) {
-        currentFloor = newFloor;
-        document.getElementById('floor').textContent = currentFloor;
-        // Generate more floors if needed
-        const topY = (platforms.length > 0 ? Math.max(...platforms.map(p => p.mesh.position.y)) : 0);
-        if (player.position.y > topY - FLOOR_HEIGHT * 3) {
-          const idx = Math.floor(topY / FLOOR_HEIGHT) + 1;
-          const items = generateFloor(idx * FLOOR_HEIGHT, idx);
-          items.forEach(item => {
-            if (item.type === 'crystal') crystals.push(item);
-            else platforms.push(item);
-          });
+    platforms.forEach(p => {
+      if (!p.active) return;
+
+      if (p.type === 'beam' && p.beam) {
+        const gx = p.mesh.position.x, gy = p.mesh.position.y, gz = p.mesh.position.z;
+        const angle = p.beam.rotation.y;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const dx = px - gx, dz = pz - gz;
+        const localX = dx * cos + dz * sin;
+        const localZ = -dx * sin + dz * cos;
+
+        if (Math.abs(localX) < 2.0 && Math.abs(localZ) < 0.5 &&
+            playerBottom < gy + 0.4 && playerTop > gy - 0.1 && playerSpeedY <= 0) {
+          onGround = true;
+          standingPlatform = p;
+          velocity.y = 0;
+          player.position.y = gy + 0.35;
         }
-      }
+      } else {
+        const ox = p.mesh.position.x, oy = p.mesh.position.y, oz = p.mesh.position.z;
+        const hw = p.mesh.geometry.parameters.width / 2;
+        const hd = p.mesh.geometry.parameters.depth / 2;
+        const hh = 0.2;
 
-      // Collect crystals
-      crystals.forEach(c => {
-        if (!c.collected && player.position.distanceTo(c.mesh.position) < 1.2) {
-          c.collected = true;
-          c.mesh.visible = false;
-          crystalsEarned++;
-        }
-      });
-    }
-
-    function checkCollisions() {
-      if (!alive) return;
-      onGround = false;
-      let standingPlatform = null;
-
-      const px = player.position.x, py = player.position.y, pz = player.position.z;
-      const pr = 0.35;
-      const playerBottom = py - pr;
-      const playerTop = py + pr;
-      const playerSpeedY = velocity.y;
-
-      platforms.forEach(p => {
-        if (!p.active) return;
-
-        if (p.type === 'beam' && p.beam) {
-          // Beam collision - use group position + beam rotation
-          const gx = p.mesh.position.x, gy = p.mesh.position.y, gz = p.mesh.position.z;
-          const angle = p.beam.rotation.y;
-          const cos = Math.cos(angle), sin = Math.sin(angle);
-
-          // Transform player position to beam-local space
-          const dx = px - gx;
-          const dz = pz - gz;
-          const localX = dx * cos + dz * sin;
-          const localZ = -dx * sin + dz * cos;
-
-          // Beam local bounds: X = ±2 (length), Z = ±0.25 (depth), Y within beam height
-          if (Math.abs(localX) < 2.0 && Math.abs(localZ) < 0.5 &&
-              playerBottom < gy + 0.4 && playerTop > gy - 0.1 &&
-              playerSpeedY <= 0) {
-            onGround = true;
-            standingPlatform = p;
-            velocity.y = 0;
-            player.position.y = gy + 0.35;
-          }
-        } else {
-          // Regular platform collision
-          const ox = p.mesh.position.x;
-          const oy = p.mesh.position.y;
-          const oz = p.mesh.position.z;
-          const hw = p.mesh.geometry.parameters.width / 2;
-          const hd = p.mesh.geometry.parameters.depth / 2;
-          const hh = 0.2;
-
-          const inX = px > ox - hw && px < ox + hw;
-          const inZ = pz > oz - hd && pz < oz + hd;
+        if (px > ox - hw && px < ox + hw && pz > oz - hd && pz < oz + hd) {
           const overlapY = playerBottom < oy + hh && playerTop > oy - hh;
 
-          if (inX && inZ && overlapY) {
+          if (overlapY) {
             if (playerBottom > oy && playerSpeedY <= 0) {
-              // Land on top
               onGround = true;
               standingPlatform = p;
               velocity.y = 0;
               player.position.y = oy + hh + pr;
+
+              // Trampoline boost
+              if (p.trampoline) velocity.y = JUMP_FORCE * 1.4;
+
+              // Crumbling platform
+              if (p.crumbling && !p.crumblingActive) {
+                p.crumblingActive = true;
+                p.crumbleTimer = 0;
+              }
             } else if (playerTop < oy) {
-              // Hit from below - block
               player.position.y = oy - hh - pr;
               velocity.y = Math.min(velocity.y, 0);
             }
           }
         }
-      });
-
-      // Platform attachment - move with platform
-      if (standingPlatform && standingPlatform.moving) {
-        const ox = standingPlatform.mesh.position.x;
-        const oz = standingPlatform.mesh.position.z;
-        // Calculate platform delta from last frame
-        if (standingPlatform.lastX !== undefined) {
-          const dx = ox - standingPlatform.lastX;
-          const dz = oz - standingPlatform.lastZ;
-          player.position.x += dx;
-          player.position.z += dz;
-        }
-        standingPlatform.lastX = ox;
-        standingPlatform.lastZ = oz;
       }
-    }
+    });
 
-    function updateCamera(dt) {
-      if (gameState !== 'playing') return;
-
-      const px = player.position.x, py = player.position.y, pz = player.position.z;
-
-      // FPS camera orbit around player
-      const cx = px + Math.sin(cameraAngleX) * CAM_DIST;
-      const cz = pz + Math.cos(cameraAngleX) * CAM_DIST;
-      const cy = py + CAM_HEIGHT + Math.sin(cameraAngleY) * 5;
-
-      camera.position.set(cx, cy, cz);
-      camera.lookAt(px, py + 1.5, pz);
-    }
-
-    function updateObstacles(dt) {
-      platforms.forEach(p => {
-        if (p.moving) {
-          p.time += dt * 2;
-          p.mesh.position.x = p.startX + Math.sin(p.time) * 3;
-        }
-        if (p.type === 'beam' && p.beam) {
-          p.beam.rotation.y += p.speed * dt;
-        }
-      });
-      crystals.forEach(c => {
-        if (!c.collected) {
-          c.mesh.rotation.y += dt * 2;
-          c.mesh.position.y += Math.sin(Date.now() * 0.003) * 0.002;
-        }
-      });
-    }
-
-    // === RENDER LOOP ===
-    function animate() {
-      requestAnimationFrame(animate);
-      const dt = Math.min(clock.getDelta(), 0.05);
-
-      if (gameState === 'playing') {
-        updatePlayer(dt);
-        checkCollisions();
-        updateObstacles(dt);
+    // Platform attachment
+    if (standingPlatform && standingPlatform.moving) {
+      const ox = standingPlatform.mesh.position.x;
+      const oz = standingPlatform.mesh.position.z;
+      if (standingPlatform.lastX !== undefined) {
+        player.position.x += ox - standingPlatform.lastX;
+        player.position.z += oz - standingPlatform.lastZ;
       }
-      updateCamera(dt);
-
-      renderer.render(scene, camera);
+      standingPlatform.lastX = ox;
+      standingPlatform.lastZ = oz;
     }
+  }
 
-    init();
+  function updateCamera() {
+    if (gameState !== 'playing') return;
+    const px = player.position.x, py = player.position.y, pz = player.position.z;
+    camera.position.set(
+      px + Math.sin(cameraAngleX) * CAM_DIST,
+      py + CAM_HEIGHT + Math.sin(cameraAngleY) * 5,
+      pz + Math.cos(cameraAngleX) * CAM_DIST
+    );
+    camera.lookAt(px, py + 1.5, pz);
+  }
+
+  function updateObstacles(dt) {
+    platforms.forEach(p => {
+      if (p.moving) {
+        p.time += dt * 2;
+        p.mesh.position.x = p.startX + Math.sin(p.time) * 3;
+      }
+      if (p.type === 'beam' && p.beam) {
+        p.beam.rotation.y += p.speed * dt;
+      }
+      if (p.crumblingActive) {
+        p.crumbleTimer += dt;
+        p.mesh.material.opacity = Math.max(0, 1 - p.crumbleTimer / 1.5);
+        p.mesh.material.transparent = true;
+        if (p.crumbleTimer > 1.5) {
+          p.active = false;
+          p.mesh.visible = false;
+          // Respawn after delay
+          setTimeout(() => {
+            p.active = true;
+            p.mesh.visible = true;
+            p.mesh.material.opacity = 1;
+            p.crumblingActive = false;
+            p.crumbleTimer = 0;
+          }, 3000);
+        }
+      }
+    });
+    crystals.forEach(c => {
+      if (!c.collected) {
+        c.mesh.rotation.y += dt * 2;
+        c.mesh.position.y += Math.sin(Date.now() * 0.003) * 0.003;
+      }
+    });
+  }
+
+  // ============================================================
+  // RENDER LOOP
+  // ============================================================
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    if (gameState === 'playing') {
+      updatePlayer(dt);
+      checkCollisions();
+      updateObstacles(dt);
+    }
+    updateCamera();
+    renderer.render(scene, camera);
+  }
+
+  init();
   </script>
 </body>
 </html>
