@@ -606,6 +606,7 @@
           activeSkin = skin.id;
           saveSave();
           renderShop();
+          createPlayer(); // Update player appearance
         }
       };
       container.appendChild(div);
@@ -811,15 +812,32 @@
     });
 
     // Platform attachment
-    if (standingPlatform && standingPlatform.moving) {
-      const ox = standingPlatform.mesh.position.x;
-      const oz = standingPlatform.mesh.position.z;
-      if (standingPlatform.lastX !== undefined) {
-        player.position.x += ox - standingPlatform.lastX;
-        player.position.z += oz - standingPlatform.lastZ;
+    if (standingPlatform) {
+      if (standingPlatform.moving) {
+        const ox = standingPlatform.mesh.position.x;
+        const oz = standingPlatform.mesh.position.z;
+        if (standingPlatform.lastX !== undefined) {
+          player.position.x += ox - standingPlatform.lastX;
+          player.position.z += oz - standingPlatform.lastZ;
+        }
+        standingPlatform.lastX = ox;
+        standingPlatform.lastZ = oz;
+      } else if (standingPlatform.type === 'beam') {
+        // Beam attachment - move with beam rotation
+        const gx = standingPlatform.mesh.position.x;
+        const gz = standingPlatform.mesh.position.z;
+        const angle = standingPlatform.beam.rotation.y;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        // Player offset from beam center in local space
+        const dx = px - gx, dz = pz - gz;
+        const localX = dx * cos + dz * sin;
+        const localZ = -dx * sin + dz * cos;
+        // Transform back to world space
+        const newDx = localX * cos - localZ * sin;
+        const newDz = localX * sin + localZ * cos;
+        player.position.x = gx + newDx;
+        player.position.z = gz + newDz;
       }
-      standingPlatform.lastX = ox;
-      standingPlatform.lastZ = oz;
     }
   }
 
