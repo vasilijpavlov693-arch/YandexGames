@@ -129,9 +129,8 @@
       const dz = Math.abs(toZ - fromZ);
       const dy = toY - fromY;
       const hDist = Math.sqrt(dx * dx + dz * dz);
-      // Can reach if vertical distance is within jump height and horizontal within reach
-      // Add some margin for landing on platform edges
-      return dy <= MAX_JUMP_HEIGHT + 0.5 && hDist <= MAX_HORIZONTAL + 1;
+      // Strict: max 60% of jump height, max 50% of horizontal reach
+      return dy <= MAX_JUMP_HEIGHT * 0.6 && hDist <= MAX_HORIZONTAL * 0.5;
     }
 
     function generateFloor(y, index) {
@@ -378,51 +377,84 @@
       const px = player.position.x, py = player.position.y, pz = player.position.z;
       const pr = 0.35;
       const playerBottom = py - pr;
+      const playerTop = py + pr;
       const playerSpeedY = velocity.y;
 
       platforms.forEach(p => {
         if (!p.active) return;
 
         if (p.type === 'beam' && p.beam) {
-          // Beam collision - use rotated position
+          // Beam collision - use the beam's actual world transform
           const beamWorldPos = new THREE.Vector3();
           p.beam.getWorldPosition(beamWorldPos);
           const bx = beamWorldPos.x, by = beamWorldPos.y, bz = beamWorldPos.z;
 
-          // Beam dimensions (rotated)
-          const beamLen = 2; // half length of beam
-          const beamH = 0.15;
+          // Get beam's rotation matrix to transform player position to beam-local space
+          const beamMatrix = new THREE.Matrix4();
+          p.beam.getWorldMatrix(beamMatrix);
+          const invMatrix = beamMatrix.clone().invert();
+          const localPos = new THREE.Vector3(px, py, pz).applyMatrix4(invMatrix);
 
-          // Check if player is above beam and within its bounds
-          if (playerSpeedY <= 0 &&
-              px > bx - beamLen && px < bx + beamLen &&
-              pz > bz - 0.4 && pz < bz + 0.4 &&
-              playerBottom > by - beamH && playerBottom < by + beamH + 0.8) {
+          // Beam local bounds: X = ±2 (length), Y = ±0.15 (height), Z = ±0.25 (depth)
+          const inX = Math.abs(localPos.x) < 2;
+          const inZ = Math.abs(localPos.z) < 0.5;
+          const inY = Math.abs(localPos.y) < 0.6;
+
+          if (inX && inZ && inY && playerSpeedY <= 0) {
             onGround = true;
             standingPlatform = p;
             velocity.y = 0;
-            player.position.y = by + beamH + pr;
+            player.position.y = by + 0.35;
           }
         } else {
           // Regular platform collision
           const ox = p.mesh.position.x;
           const oy = p.mesh.position.y;
           const oz = p.mesh.position.z;
-
-          // Get actual platform size
           const hw = p.mesh.geometry.parameters.width / 2;
           const hd = p.mesh.geometry.parameters.depth / 2;
           const hh = 0.2;
 
-          // Only land from above (prevent jumping through)
-          if (playerSpeedY <= 0 &&
-              px > ox - hw && px < ox + hw &&
-              pz > oz - hd && pz < oz + hd &&
-              playerBottom > oy - hh && playerBottom < oy + hh + 1.0) {
-            onGround = true;
-            standingPlatform = p;
-            velocity.y = 0;
-            player.position.y = oy + hh + pr;
+          const inX = px > ox - hw && px < ox + hw;
+          const inZ = pz > oz - hd && pz < oz + hd;
+          const overlapY = playerBottom < oy + hh && playerTop > oy - hh;
+
+          if (inX && inZ && overlapY) {
+            // Determine push direction
+            const fromAbove = playerBottom > oy;
+            const fromBelow = playerTop < oy;
+            const fromFront = pz > oz;
+            const fromBack = pz < oz;
+            const fromLeft = px < ox;
+            const fromRight = px > ox;
+
+            if (fromAbove && playerSpeedY <= 0) {
+              // Land on top
+              onGround = true;
+              standingPlatform = p;
+              velocity.y = 0;
+              player.position.y = oy + hh + pr;
+            } else if (fromBelow) {
+              // Hit from below - push down
+              player.position.y = oy - hh - pr;
+              velocity.y = Math.min(velocity.y, 0);
+            } else if (fromLeft) {
+              // Hit from left - push left
+              player.position.x = ox - hw - pr;
+              velocity.x = Math.min(velocity.x, 0);
+            } else if (fromRight) {
+              // Hit from right - push right
+              player.position.x = ox + hw + pr;
+              velocity.x = Math.max(velocity.x, 0);
+            } else if (fromFront) {
+              // Hit from front - push forward
+              player.position.z = oz - hd - pr;
+              velocity.z = Math.min(velocity.z, 0);
+            } else if (fromBack) {
+              // Hit from back - push back
+              player.position.z = oz + hd + pr;
+              velocity.z = Math.max(velocity.z, 0);
+            }
           }
         }
       });
