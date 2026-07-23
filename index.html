@@ -384,27 +384,25 @@
         if (!p.active) return;
 
         if (p.type === 'beam' && p.beam) {
-          // Beam collision - use the beam's actual world transform
-          const beamWorldPos = new THREE.Vector3();
-          p.beam.getWorldPosition(beamWorldPos);
-          const bx = beamWorldPos.x, by = beamWorldPos.y, bz = beamWorldPos.z;
+          // Beam collision - use group position + beam rotation
+          const gx = p.mesh.position.x, gy = p.mesh.position.y, gz = p.mesh.position.z;
+          const angle = p.beam.rotation.y;
+          const cos = Math.cos(angle), sin = Math.sin(angle);
 
-          // Get beam's rotation matrix to transform player position to beam-local space
-          const beamMatrix = new THREE.Matrix4();
-          p.beam.getWorldMatrix(beamMatrix);
-          const invMatrix = beamMatrix.clone().invert();
-          const localPos = new THREE.Vector3(px, py, pz).applyMatrix4(invMatrix);
+          // Transform player position to beam-local space
+          const dx = px - gx;
+          const dz = pz - gz;
+          const localX = dx * cos + dz * sin;
+          const localZ = -dx * sin + dz * cos;
 
-          // Beam local bounds: X = ±2 (length), Y = ±0.15 (height), Z = ±0.25 (depth)
-          const inX = Math.abs(localPos.x) < 2;
-          const inZ = Math.abs(localPos.z) < 0.5;
-          const inY = Math.abs(localPos.y) < 0.6;
-
-          if (inX && inZ && inY && playerSpeedY <= 0) {
+          // Beam local bounds: X = ±2 (length), Z = ±0.25 (depth), Y within beam height
+          if (Math.abs(localX) < 2.0 && Math.abs(localZ) < 0.5 &&
+              playerBottom < gy + 0.4 && playerTop > gy - 0.1 &&
+              playerSpeedY <= 0) {
             onGround = true;
             standingPlatform = p;
             velocity.y = 0;
-            player.position.y = by + 0.35;
+            player.position.y = gy + 0.35;
           }
         } else {
           // Regular platform collision
@@ -420,38 +418,26 @@
           const overlapY = playerBottom < oy + hh && playerTop > oy - hh;
 
           if (inX && inZ && overlapY) {
-            // Determine push direction
-            const fromAbove = playerBottom > oy;
-            const fromBelow = playerTop < oy;
-            const fromFront = pz > oz;
-            const fromBack = pz < oz;
-            const fromLeft = px < ox;
-            const fromRight = px > ox;
-
-            if (fromAbove && playerSpeedY <= 0) {
+            if (playerBottom > oy && playerSpeedY <= 0) {
               // Land on top
               onGround = true;
               standingPlatform = p;
               velocity.y = 0;
               player.position.y = oy + hh + pr;
-            } else if (fromBelow) {
-              // Hit from below - push down
+            } else if (playerTop < oy) {
+              // Hit from below
               player.position.y = oy - hh - pr;
               velocity.y = Math.min(velocity.y, 0);
-            } else if (fromLeft) {
-              // Hit from left - push left
+            } else if (px < ox) {
               player.position.x = ox - hw - pr;
               velocity.x = Math.min(velocity.x, 0);
-            } else if (fromRight) {
-              // Hit from right - push right
+            } else if (px > ox) {
               player.position.x = ox + hw + pr;
               velocity.x = Math.max(velocity.x, 0);
-            } else if (fromFront) {
-              // Hit from front - push forward
+            } else if (pz < oz) {
               player.position.z = oz - hd - pr;
               velocity.z = Math.min(velocity.z, 0);
-            } else if (fromBack) {
-              // Hit from back - push back
+            } else if (pz > oz) {
               player.position.z = oz + hd + pr;
               velocity.z = Math.max(velocity.z, 0);
             }
