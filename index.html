@@ -176,7 +176,8 @@
         } else if (difficulty > 0.2 && Math.random() < 0.3) {
           group.push(createPlatform(ox, oy, oz, 2, 0x9944ff, true));
         } else {
-          group.push(createPlatform(ox, oy, oz, 2 + Math.random() * 2, 0x3355bb));
+          // More size variation: 1.5 to 5
+          group.push(createPlatform(ox, oy, oz, 1.5 + Math.random() * 3.5, 0x3355bb));
         }
 
         lastX = ox; lastY = oy; lastZ = oz;
@@ -427,21 +428,9 @@
               velocity.y = 0;
               player.position.y = oy + hh + pr;
             } else if (playerTop < oy) {
-              // Hit from below
+              // Hit from below - block
               player.position.y = oy - hh - pr;
               velocity.y = Math.min(velocity.y, 0);
-            } else if (px < ox) {
-              player.position.x = ox - hw - pr;
-              velocity.x = Math.min(velocity.x, 0);
-            } else if (px > ox) {
-              player.position.x = ox + hw + pr;
-              velocity.x = Math.max(velocity.x, 0);
-            } else if (pz < oz) {
-              player.position.z = oz - hd - pr;
-              velocity.z = Math.min(velocity.z, 0);
-            } else if (pz > oz) {
-              player.position.z = oz + hd + pr;
-              velocity.z = Math.max(velocity.z, 0);
             }
           }
         }
