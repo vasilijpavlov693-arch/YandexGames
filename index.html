@@ -133,17 +133,19 @@
       return dy <= MAX_JUMP_HEIGHT * 0.6 && hDist <= MAX_HORIZONTAL * 0.5;
     }
 
+    const STEP_HEIGHT = 2.5; // Fixed height between platforms
+
     function generateFloor(y, index) {
       const difficulty = Math.min(index / 8, 1);
       const group = [];
 
-      // Base platform (always at origin for first floor, or near previous platform)
+      // Base platform
       const baseX = index === 0 ? 0 : (Math.random() - 0.5) * 4;
       const baseZ = index === 0 ? 0 : (Math.random() - 0.5) * 2;
       const plat = createPlatform(baseX, y, baseZ, 5, 0x2244aa);
       group.push(plat);
 
-      // Generate obstacles that are reachable from each other
+      // Generate platforms with fixed height, random horizontal distance
       let lastX = baseX, lastY = y, lastZ = baseZ;
       const count = 2 + Math.floor(difficulty * 2);
 
@@ -151,22 +153,22 @@
         let attempts = 0;
         let ox, oy, oz;
 
-        // Keep trying until we find a reachable position
         do {
-          const angle = (i / count) * Math.PI * 2 + index * 0.7 + (Math.random() - 0.5) * 0.8;
-          const r = 2 + Math.random() * 3;
-          ox = lastX + Math.cos(angle) * r;
-          oz = lastZ + Math.sin(angle) * r * 0.6;
-          oy = lastY + 2 + Math.random() * 2; // Step up 2-4 units
-          attempts++;
-        } while (!isReachable(lastX, lastY, lastZ, ox, oy, oz) && attempts < 20);
-
-        // If still not reachable after 20 tries, force it to be reachable
-        if (!isReachable(lastX, lastY, lastZ, ox, oy, oz)) {
+          // Fixed height step
+          oy = lastY + STEP_HEIGHT;
+          // Random horizontal distance (1.5 to 4 units)
+          const r = 1.5 + Math.random() * 2.5;
           const angle = Math.random() * Math.PI * 2;
-          ox = lastX + Math.cos(angle) * 2;
-          oz = lastZ + Math.sin(angle) * 1.5;
-          oy = lastY + 2;
+          ox = lastX + Math.cos(angle) * r;
+          oz = lastZ + Math.sin(angle) * r * 0.5;
+          attempts++;
+        } while (!isReachable(lastX, lastY, lastZ, ox, oy, oz) && attempts < 30);
+
+        // Fallback: place directly above
+        if (!isReachable(lastX, lastY, lastZ, ox, oy, oz)) {
+          ox = lastX + (Math.random() - 0.5) * 2;
+          oz = lastZ + (Math.random() - 0.5) * 1;
+          oy = lastY + STEP_HEIGHT;
         }
 
         if (difficulty > 0.3 && Math.random() < 0.3) {
