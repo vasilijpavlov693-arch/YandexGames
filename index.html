@@ -25,7 +25,7 @@
   <div id="hud" style="display:none">Этаж: <span id="floor">1</span></div>
   <div id="menu"><h1>БАШНЯ АДА</h1><button onclick="startGame()">ИГРАТЬ</button></div>
   <div id="death"><h2>ТЫ ПОГИБ!</h2><p>Этаж: <span id="dFloor">1</span></p><button onclick="restartGame()">РЕСТАРТ</button><button onclick="goMenu()">МЕНЮ</button></div>
-  <div class="hint">WASD — движение | Пробел — прыжок | Q/E — камера</div>
+  <div class="hint">WASD — движение | Пробел — прыжок | ЛКМ — камера</div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
@@ -35,18 +35,19 @@
     let velocity = new THREE.Vector3();
     let onGround = false, alive = true;
     let currentFloor = 1, crystalsEarned = 0;
-    let cameraAngle = 0, targetCameraAngle = 0;
+    let cameraAngleX = 0, cameraAngleY = 0.3;
     let gameState = 'menu'; // menu, playing, dead
     const keys = {};
 
     // === CONFIG ===
-    const GRAVITY = 25;
-    const JUMP_FORCE = 14;
+    const GRAVITY = 30;
+    const JUMP_FORCE = 12;
     const MOVE_SPEED = 8;
-    const FLOOR_HEIGHT = 8;
-    const CAM_DIST = 14;
-    const CAM_HEIGHT = 6;
+    const FLOOR_HEIGHT = 10;
+    const CAM_DIST = 12;
+    const CAM_HEIGHT = 5;
     const CAM_SPEED = 20;
+    const MOUSE_SENSITIVITY = 0.002;
 
     // === INIT ===
     function init() {
@@ -100,6 +101,20 @@
       window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
       window.addEventListener('keyup', e => { keys[e.code] = false; });
 
+      // Pointer lock for mouse camera
+      renderer.domElement.addEventListener('click', () => {
+        if (gameState === 'playing') {
+          renderer.domElement.requestPointerLock();
+        }
+      });
+      document.addEventListener('pointerlockchange', () => {});
+      document.addEventListener('mousemove', e => {
+        if (document.pointerLockElement === renderer.domElement && gameState === 'playing') {
+          cameraAngleX -= e.movementX * MOUSE_SENSITIVITY;
+          cameraAngleY = Math.max(-0.5, Math.min(0.8, cameraAngleY - e.movementY * MOUSE_SENSITIVITY));
+        }
+      });
+
       animate();
     }
 
@@ -116,9 +131,9 @@
       const count = 2 + Math.floor(difficulty * 2);
       for (let i = 0; i < count; i++) {
         const angle = (i / count) * Math.PI * 2 + index * 0.7;
-        const r = 2 + Math.random() * 3;
+        const r = 3 + Math.random() * 4;
         const ox = Math.cos(angle) * r;
-        const oz = Math.sin(angle) * r * 0.5;
+        const oz = Math.sin(angle) * r * 0.6;
         const oy = y + (i + 1) * (FLOOR_HEIGHT / (count + 1));
 
         if (difficulty > 0.3 && Math.random() < 0.3) {
@@ -242,14 +257,15 @@
       player.position.set(0, 2, 0);
       player.visible = true;
       player.alive = true;
-      cameraAngle = 0;
-      targetCameraAngle = 0;
+      cameraAngleX = 0;
+      cameraAngleY = 0.3;
       buildTower();
     }
 
     function restartGame() { startGame(); }
     function goMenu() {
       gameState = 'menu';
+      document.exitPointerLock();
       document.getElementById('menu').style.display = 'flex';
       document.getElementById('death').style.display = 'none';
       document.getElementById('hud').style.display = 'none';
@@ -259,6 +275,7 @@
       if (!alive) return;
       alive = false;
       player.visible = false;
+      document.exitPointerLock();
       document.getElementById('dFloor').textContent = currentFloor;
       setTimeout(() => {
         document.getElementById('death').style.display = 'flex';
@@ -276,7 +293,7 @@
       if (keys['KeyS'] || keys['ArrowDown']) mz = 1;
 
       // Rotate by camera
-      const cos = Math.cos(cameraAngle), sin = Math.sin(cameraAngle);
+      const cos = Math.cos(cameraAngleX), sin = Math.sin(cameraAngleX);
       velocity.x = (mx * cos + mz * sin) * MOVE_SPEED;
       velocity.z = (-mx * sin + mz * cos) * MOVE_SPEED;
 
@@ -363,19 +380,15 @@
     function updateCamera(dt) {
       if (gameState !== 'playing') return;
 
-      // Rotate camera
-      if (keys['KeyQ']) targetCameraAngle += 2 * dt;
-      if (keys['KeyE']) targetCameraAngle -= 2 * dt;
-      cameraAngle += (targetCameraAngle - cameraAngle) * CAM_SPEED * dt;
-
       const px = player.position.x, py = player.position.y, pz = player.position.z;
-      const cx = px + Math.sin(cameraAngle) * CAM_DIST;
-      const cz = pz + Math.cos(cameraAngle) * CAM_DIST;
-      const cy = py + CAM_HEIGHT;
+
+      // FPS camera orbit around player
+      const cx = px + Math.sin(cameraAngleX) * CAM_DIST;
+      const cz = pz + Math.cos(cameraAngleX) * CAM_DIST;
+      const cy = py + CAM_HEIGHT + Math.sin(cameraAngleY) * 5;
 
       camera.position.set(cx, cy, cz);
-
-      camera.lookAt(px, py + 2, pz);
+      camera.lookAt(px, py + 1.5, pz);
     }
 
     function updateObstacles(dt) {
